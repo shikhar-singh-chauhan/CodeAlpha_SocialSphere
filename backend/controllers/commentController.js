@@ -1,135 +1,299 @@
-const Comment = require("../models/Comment");
 const Post = require("../models/Post");
+const Notification = require("../models/Notification");
 
-// ===============================
+// =====================================================
 // CREATE COMMENT
-// ===============================
+// =====================================================
+
 const createComment = async (req, res) => {
   try {
-    const { content } = req.body;
-    const { postId } = req.params;
+    const postId =
+      req.params.postId;
 
-    // Check content
-    if (!content || content.trim() === "") {
-      return res.status(400).json({
-        message: "Comment content is required",
-      });
+    // Support both frontend field names
+    const text =
+      req.body.text ||
+      req.body.content;
+
+    // ==========================================
+    // VALIDATION
+    // ==========================================
+
+    if (
+      !text ||
+      !text.trim()
+    ) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Comment text is required",
+        });
     }
 
-    // Check whether post exists
-    const post = await Post.findById(postId);
+    // ==========================================
+    // FIND POST
+    // ==========================================
+
+    const post =
+      await Post.findById(
+        postId
+      );
 
     if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
+      return res
+        .status(404)
+        .json({
+          message:
+            "Post not found",
+        });
+    }
+
+    // ==========================================
+    // ADD COMMENT DIRECTLY TO POST
+    // ==========================================
+
+    post.comments.push({
+      user:
+        req.user.id,
+
+      text:
+        text.trim(),
+    });
+
+    await post.save();
+
+    // ==========================================
+    // GET NEW COMMENT
+    // ==========================================
+
+    const newComment =
+      post.comments[
+        post.comments.length - 1
+      ];
+
+    // ==========================================
+    // RELOAD POST WITH COMMENT USER
+    // ==========================================
+
+    const populatedPost =
+      await Post.findById(
+        post._id
+      )
+        .populate(
+          "author",
+          "name email profilePicture"
+        )
+        .populate(
+          "comments.user",
+          "name email profilePicture"
+        );
+
+    const populatedComment =
+      populatedPost.comments.id(
+        newComment._id
+      );
+
+    // ==========================================
+    // NOTIFICATION
+    // ==========================================
+
+    if (
+      post.author.toString() !==
+      req.user.id.toString()
+    ) {
+      await Notification.create({
+        recipient:
+          post.author,
+
+        sender:
+          req.user.id,
+
+        type:
+          "comment",
+
+        post:
+          post._id,
       });
     }
 
-    // Create comment
-    const comment = await Comment.create({
-      content: content.trim(),
-      author: req.user.id,
-      post: postId,
-    });
-
-    // Populate author information
-    await comment.populate("author", "name email");
+    // ==========================================
+    // RESPONSE
+    // ==========================================
 
     res.status(201).json({
-      message: "Comment added successfully",
-      comment,
+      message:
+        "Comment added successfully",
+
+      comment:
+        populatedComment,
     });
   } catch (error) {
-    console.error("Create comment error:", error);
+    console.error(
+      "Create comment error:",
+      error
+    );
 
     res.status(500).json({
-      message: "Server error",
+      message:
+        "Server error",
     });
   }
 };
 
-// ===============================
-// GET COMMENTS FOR A POST
-// ===============================
-const getComments = async (req, res) => {
-  try {
-    const { postId } = req.params;
+// =====================================================
+// GET COMMENTS
+// =====================================================
 
-    // Check whether post exists
-    const post = await Post.findById(postId);
+const getComments = async (
+  req,
+  res
+) => {
+  try {
+    const post =
+      await Post.findById(
+        req.params.postId
+      )
+        .populate(
+          "comments.user",
+          "name email profilePicture"
+        );
 
     if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
-      });
+      return res
+        .status(404)
+        .json({
+          message:
+            "Post not found",
+        });
     }
 
-    const comments = await Comment.find({
-      post: postId,
-    })
-      .populate("author", "name email")
-      .sort({ createdAt: 1 });
-
     res.status(200).json({
-      comments,
+      comments:
+        post.comments || [],
     });
   } catch (error) {
-    console.error("Get comments error:", error);
+    console.error(
+      "Get comments error:",
+      error
+    );
 
     res.status(500).json({
-      message: "Server error",
+      message:
+        "Server error",
     });
   }
 };
 
-// ===============================
+// =====================================================
 // DELETE COMMENT
-// ===============================
-const deleteComment = async (req, res) => {
-  try {
-    const { postId, commentId } = req.params;
+// =====================================================
 
-    // Find comment
-    const comment = await Comment.findById(commentId);
+const deleteComment = async (
+  req,
+  res
+) => {
+  try {
+    const post =
+      await Post.findById(
+        req.params.postId
+      );
+
+    if (!post) {
+      return res
+        .status(404)
+        .json({
+          message:
+            "Post not found",
+        });
+    }
+
+    const comment =
+      post.comments.id(
+        req.params.id
+      );
 
     if (!comment) {
-      return res.status(404).json({
-        message: "Comment not found",
-      });
+      return res
+        .status(404)
+        .json({
+          message:
+            "Comment not found",
+        });
     }
 
-    // Make sure comment belongs to this post
-    if (comment.post.toString() !== postId) {
-      return res.status(400).json({
-        message: "Comment does not belong to this post",
-      });
+    // ==========================================
+    // CHECK OWNER
+    // ==========================================
+
+    if (
+      comment.user.toString() !==
+      req.user.id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({
+          message:
+            "You are not allowed to delete this comment",
+        });
     }
 
-    // Check ownership
-    if (comment.author.toString() !== req.user.id) {
-      return res.status(403).json({
-        message: "You are not allowed to delete this comment",
-      });
-    }
+    // Save info before removal
+    const commentUser =
+      comment.user;
 
-    // Delete comment
-    await Comment.findByIdAndDelete(commentId);
+    // ==========================================
+    // REMOVE COMMENT
+    // ==========================================
+
+    post.comments =
+      post.comments.filter(
+        (item) =>
+          item._id.toString() !==
+          req.params.id.toString()
+      );
+
+    await post.save();
+
+    // ==========================================
+    // REMOVE RELATED NOTIFICATION
+    // ==========================================
+
+    await Notification.findOneAndDelete({
+      recipient:
+        post.author,
+
+      sender:
+        commentUser,
+
+      type:
+        "comment",
+
+      post:
+        post._id,
+    });
 
     res.status(200).json({
-      message: "Comment deleted successfully",
+      message:
+        "Comment deleted successfully",
     });
   } catch (error) {
-    console.error("Delete comment error:", error);
+    console.error(
+      "Delete comment error:",
+      error
+    );
 
     res.status(500).json({
-      message: "Server error",
+      message:
+        "Server error",
     });
   }
 };
 
-// ===============================
+// =====================================================
 // EXPORT
-// ===============================
+// =====================================================
+
 module.exports = {
   createComment,
   getComments,

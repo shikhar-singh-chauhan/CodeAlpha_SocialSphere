@@ -10,15 +10,28 @@ const protect = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// Create comment
-router.post("/:postId/comments", protect, createComment);
+// ===============================
+// CREATE COMMENT
+// ===============================
+router.post(
+  "/:postId",
+  protect,
+  createComment
+);
 
-// Get comments
-router.get("/:postId/comments", getComments);
+// ===============================
+// GET COMMENTS FOR POST
+// ===============================
+router.get(
+  "/:postId",
+  getComments
+);
 
-// Delete comment
+// ===============================
+// DELETE COMMENT
+// ===============================
 router.delete(
-  "/:postId/comments/:commentId",
+  "/:id",
   protect,
   deleteComment
 );

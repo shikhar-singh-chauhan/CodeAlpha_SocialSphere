@@ -9,6 +9,12 @@ const {
   toggleLike,
 } = require("../controllers/postController");
 
+const {
+  createComment,
+  getComments,
+  deleteComment,
+} = require("../controllers/commentController");
+
 const protect = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -16,32 +22,85 @@ const router = express.Router();
 // ===============================
 // CREATE POST
 // ===============================
-router.post("/", protect, createPost);
+router.post(
+  "/",
+  protect,
+  createPost
+);
 
 // ===============================
 // GET ALL POSTS
 // ===============================
-router.get("/", getPosts);
+router.get(
+  "/",
+  getPosts
+);
 
 // ===============================
 // GET PERSONALIZED FEED
-// IMPORTANT: This must come BEFORE /:id
+// IMPORTANT: BEFORE /:id
 // ===============================
-router.get("/feed", protect, getFeed);
+router.get(
+  "/feed",
+  protect,
+  getFeed
+);
 
 // ===============================
-// GET SINGLE POST
+// CREATE COMMENT
+// POST /api/posts/:postId/comments
 // ===============================
-router.get("/:id", getPostById);
+router.post(
+  "/:postId/comments",
+  protect,
+  createComment
+);
 
 // ===============================
-// DELETE POST
+// GET COMMENTS
+// GET /api/posts/:postId/comments
 // ===============================
-router.delete("/:id", protect, deletePost);
+router.get(
+  "/:postId/comments",
+  protect,
+  getComments
+);
+
+// ===============================
+// DELETE COMMENT
+// DELETE /api/posts/:postId/comments/:id
+// ===============================
+router.delete(
+  "/:postId/comments/:id",
+  protect,
+  deleteComment
+);
 
 // ===============================
 // LIKE / UNLIKE POST
 // ===============================
-router.post("/:id/like", protect, toggleLike);
+router.post(
+  "/:id/like",
+  protect,
+  toggleLike
+);
+
+// ===============================
+// DELETE POST
+// ===============================
+router.delete(
+  "/:id",
+  protect,
+  deletePost
+);
+
+// ===============================
+// GET SINGLE POST
+// KEEP LAST
+// ===============================
+router.get(
+  "/:id",
+  getPostById
+);
 
 module.exports = router;
