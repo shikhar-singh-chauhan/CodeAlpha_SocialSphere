@@ -2,6 +2,8 @@ const Post = require("../models/Post");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 
+const cloudinary = require("../config/cloudinary");
+
 // =====================================================
 // CREATE POST
 // =====================================================
@@ -11,30 +13,64 @@ const createPost = async (
   res
 ) => {
   try {
-    const {
-      content,
-    } = req.body;
+    const content =
+      req.body.content?.trim() || "";
+
+    // =================================================
+    // FORMAT UPLOADED MEDIA
+    // =================================================
+
+    const media =
+      (req.files || []).map(
+        (file) => ({
+          url:
+            file.path,
+
+          publicId:
+            file.filename,
+
+          resourceType:
+            file.mimetype?.startsWith(
+              "video/"
+            )
+              ? "video"
+              : "image",
+        })
+      );
+
+    // =================================================
+    // REQUIRE TEXT OR MEDIA
+    // =================================================
 
     if (
-      !content ||
-      !content.trim()
+      !content &&
+      media.length === 0
     ) {
       return res
         .status(400)
         .json({
           message:
-            "Post content is required",
+            "Post must contain text, image, or video",
         });
     }
 
+    // =================================================
+    // CREATE POST
+    // =================================================
+
     const post =
       await Post.create({
-        content:
-          content.trim(),
+        content,
 
         author:
           req.user.id,
+
+        media,
       });
+
+    // =================================================
+    // POPULATE AUTHOR
+    // =================================================
 
     await post.populate(
       "author",
@@ -55,6 +91,7 @@ const createPost = async (
 
     res.status(500).json({
       message:
+        error.message ||
         "Server error",
     });
   }
@@ -80,8 +117,7 @@ const getPosts = async (
           "name email profilePicture"
         )
         .sort({
-          createdAt:
-            -1,
+          createdAt: -1,
         });
 
     res.status(200).json({
@@ -123,6 +159,7 @@ const getFeed = async (
         });
     }
 
+    // Current user + people they follow
     const feedUsers = [
       req.user.id,
       ...(user.following || []),
@@ -144,8 +181,7 @@ const getFeed = async (
           "name email profilePicture"
         )
         .sort({
-          createdAt:
-            -1,
+          createdAt: -1,
         });
 
     res.status(200).json({
@@ -234,6 +270,10 @@ const deletePost = async (
         });
     }
 
+    // =================================================
+    // ONLY POST OWNER CAN DELETE
+    // =================================================
+
     if (
       post.author.toString() !==
       req.user.id.toString()
@@ -246,10 +286,53 @@ const deletePost = async (
         });
     }
 
+    // =================================================
+    // DELETE CLOUDINARY MEDIA
+    // =================================================
+
+    if (
+      Array.isArray(
+        post.media
+      ) &&
+      post.media.length > 0
+    ) {
+      for (
+        const mediaItem of post.media
+      ) {
+        try {
+          await cloudinary.uploader.destroy(
+            mediaItem.publicId,
+            {
+              resource_type:
+                mediaItem.resourceType ===
+                "video"
+                  ? "video"
+                  : "image",
+            }
+          );
+        } catch (
+          cloudinaryError
+        ) {
+          console.error(
+            "Cloudinary delete error:",
+            cloudinaryError
+          );
+        }
+      }
+    }
+
+    // =================================================
+    // DELETE RELATED NOTIFICATIONS
+    // =================================================
+
     await Notification.deleteMany({
       post:
         post._id,
     });
+
+    // =================================================
+    // DELETE POST
+    // =================================================
 
     await Post.findByIdAndDelete(
       post._id
@@ -305,9 +388,9 @@ const toggleLike = async (
           userId.toString()
       );
 
-    // ==========================================
+    // =================================================
     // UNLIKE
-    // ==========================================
+    // =================================================
 
     if (alreadyLiked) {
       post.likes =
@@ -319,6 +402,7 @@ const toggleLike = async (
 
       await post.save();
 
+      // Remove like notification
       await Notification.findOneAndDelete({
         recipient:
           post.author,
@@ -347,15 +431,19 @@ const toggleLike = async (
         });
     }
 
-    // ==========================================
+    // =================================================
     // LIKE
-    // ==========================================
+    // =================================================
 
     post.likes.push(
       userId
     );
 
     await post.save();
+
+    // =================================================
+    // LIKE NOTIFICATION
+    // =================================================
 
     if (
       post.author.toString() !==

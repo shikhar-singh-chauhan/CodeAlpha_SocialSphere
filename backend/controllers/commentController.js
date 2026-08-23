@@ -10,30 +10,240 @@ const createComment = async (req, res) => {
     const postId =
       req.params.postId;
 
-    // Support both frontend field names
-    const text =
-      req.body.text ||
-      req.body.content;
+    const userId =
+      req.user?.id ||
+      req.user?._id;
 
-    // ==========================================
-    // VALIDATION
-    // ==========================================
+    const text =
+      req.body?.text ||
+      req.body?.content ||
+      "";
+
+    // =================================================
+    // AUTH CHECK
+    // =================================================
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Not authorized",
+      });
+    }
+
+    // =================================================
+    // VALIDATE COMMENT
+    // =================================================
+
+    if (!text.trim()) {
+      return res.status(400).json({
+        message:
+          "Comment text is required",
+      });
+    }
+
+    if (text.trim().length > 500) {
+      return res.status(400).json({
+        message:
+          "Comment cannot exceed 500 characters",
+      });
+    }
+
+    // =================================================
+    // FIND POST
+    // =================================================
+
+    const post =
+      await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({
+        message:
+          "Post not found",
+      });
+    }
+
+    // =================================================
+    // CREATE EMBEDDED COMMENT
+    // =================================================
+
+    const newComment =
+      post.comments.create({
+        user: userId,
+        text: text.trim(),
+      });
+
+    post.comments.push(
+      newComment
+    );
+
+    await post.save();
+
+    // =================================================
+    // POPULATE COMMENT USER
+    // =================================================
+
+    await post.populate({
+      path: "comments.user",
+      select:
+        "name email profilePicture",
+    });
+
+    const populatedComment =
+      post.comments.id(
+        newComment._id
+      );
+
+    // =================================================
+    // CREATE NOTIFICATION
+    // Notification failure should NOT
+    // make comment creation fail.
+    // =================================================
 
     if (
-      !text ||
-      !text.trim()
+      post.author.toString() !==
+      userId.toString()
     ) {
+      try {
+        await Notification.create({
+          recipient:
+            post.author,
+
+          sender:
+            userId,
+
+          type:
+            "comment",
+
+          post:
+            post._id,
+        });
+      } catch (
+        notificationError
+      ) {
+        console.error(
+          "Comment notification error:",
+          notificationError
+        );
+      }
+    }
+
+    // =================================================
+    // RESPONSE
+    // =================================================
+
+    return res
+      .status(201)
+      .json({
+        message:
+          "Comment added successfully",
+
+        comment:
+          populatedComment,
+      });
+  } catch (error) {
+    console.error(
+      "Create comment error:",
+      error
+    );
+
+    return res
+      .status(500)
+      .json({
+        message:
+          error.message ||
+          "Server error",
+      });
+  }
+};
+
+// =====================================================
+// GET COMMENTS
+// =====================================================
+
+const getComments = async (
+  req,
+  res
+) => {
+  try {
+    const postId =
+      req.params.postId;
+
+    const post =
+      await Post.findById(
+        postId
+      ).populate({
+        path:
+          "comments.user",
+
+        select:
+          "name email profilePicture",
+      });
+
+    if (!post) {
       return res
-        .status(400)
+        .status(404)
         .json({
           message:
-            "Comment text is required",
+            "Post not found",
         });
     }
 
-    // ==========================================
+    return res
+      .status(200)
+      .json({
+        comments:
+          post.comments || [],
+      });
+  } catch (error) {
+    console.error(
+      "Get comments error:",
+      error
+    );
+
+    return res
+      .status(500)
+      .json({
+        message:
+          error.message ||
+          "Server error",
+      });
+  }
+};
+
+// =====================================================
+// DELETE COMMENT
+// =====================================================
+
+const deleteComment = async (
+  req,
+  res
+) => {
+  try {
+    const postId =
+      req.params.postId;
+
+    const commentId =
+      req.params.id;
+
+    const userId =
+      req.user?.id ||
+      req.user?._id;
+
+    // =================================================
+    // AUTH CHECK
+    // =================================================
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({
+          message:
+            "Not authorized",
+        });
+    }
+
+    // =================================================
     // FIND POST
-    // ==========================================
+    // =================================================
 
     const post =
       await Post.findById(
@@ -49,168 +259,13 @@ const createComment = async (req, res) => {
         });
     }
 
-    // ==========================================
-    // ADD COMMENT DIRECTLY TO POST
-    // ==========================================
-
-    post.comments.push({
-      user:
-        req.user.id,
-
-      text:
-        text.trim(),
-    });
-
-    await post.save();
-
-    // ==========================================
-    // GET NEW COMMENT
-    // ==========================================
-
-    const newComment =
-      post.comments[
-        post.comments.length - 1
-      ];
-
-    // ==========================================
-    // RELOAD POST WITH COMMENT USER
-    // ==========================================
-
-    const populatedPost =
-      await Post.findById(
-        post._id
-      )
-        .populate(
-          "author",
-          "name email profilePicture"
-        )
-        .populate(
-          "comments.user",
-          "name email profilePicture"
-        );
-
-    const populatedComment =
-      populatedPost.comments.id(
-        newComment._id
-      );
-
-    // ==========================================
-    // NOTIFICATION
-    // ==========================================
-
-    if (
-      post.author.toString() !==
-      req.user.id.toString()
-    ) {
-      await Notification.create({
-        recipient:
-          post.author,
-
-        sender:
-          req.user.id,
-
-        type:
-          "comment",
-
-        post:
-          post._id,
-      });
-    }
-
-    // ==========================================
-    // RESPONSE
-    // ==========================================
-
-    res.status(201).json({
-      message:
-        "Comment added successfully",
-
-      comment:
-        populatedComment,
-    });
-  } catch (error) {
-    console.error(
-      "Create comment error:",
-      error
-    );
-
-    res.status(500).json({
-      message:
-        "Server error",
-    });
-  }
-};
-
-// =====================================================
-// GET COMMENTS
-// =====================================================
-
-const getComments = async (
-  req,
-  res
-) => {
-  try {
-    const post =
-      await Post.findById(
-        req.params.postId
-      )
-        .populate(
-          "comments.user",
-          "name email profilePicture"
-        );
-
-    if (!post) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Post not found",
-        });
-    }
-
-    res.status(200).json({
-      comments:
-        post.comments || [],
-    });
-  } catch (error) {
-    console.error(
-      "Get comments error:",
-      error
-    );
-
-    res.status(500).json({
-      message:
-        "Server error",
-    });
-  }
-};
-
-// =====================================================
-// DELETE COMMENT
-// =====================================================
-
-const deleteComment = async (
-  req,
-  res
-) => {
-  try {
-    const post =
-      await Post.findById(
-        req.params.postId
-      );
-
-    if (!post) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Post not found",
-        });
-    }
+    // =================================================
+    // FIND COMMENT
+    // =================================================
 
     const comment =
       post.comments.id(
-        req.params.id
+        commentId
       );
 
     if (!comment) {
@@ -222,13 +277,14 @@ const deleteComment = async (
         });
     }
 
-    // ==========================================
-    // CHECK OWNER
-    // ==========================================
+    // =================================================
+    // CHECK COMMENT OWNER
+    // =================================================
 
     if (
+      !comment.user ||
       comment.user.toString() !==
-      req.user.id.toString()
+        userId.toString()
     ) {
       return res
         .status(403)
@@ -238,55 +294,73 @@ const deleteComment = async (
         });
     }
 
-    // Save info before removal
-    const commentUser =
-      comment.user;
+    const commentOwnerId =
+      comment.user.toString();
 
-    // ==========================================
-    // REMOVE COMMENT
-    // ==========================================
+    // =================================================
+    // REMOVE EMBEDDED COMMENT
+    // =================================================
 
-    post.comments =
-      post.comments.filter(
-        (item) =>
-          item._id.toString() !==
-          req.params.id.toString()
-      );
+    post.comments.pull(
+      commentId
+    );
 
     await post.save();
 
-    // ==========================================
-    // REMOVE RELATED NOTIFICATION
-    // ==========================================
+    // =================================================
+    // REMOVE COMMENT NOTIFICATION
+    // Notification cleanup failure should
+    // NOT make deletion fail.
+    // =================================================
 
-    await Notification.findOneAndDelete({
-      recipient:
-        post.author,
+    try {
+      await Notification.findOneAndDelete({
+        recipient:
+          post.author,
 
-      sender:
-        commentUser,
+        sender:
+          commentOwnerId,
 
-      type:
-        "comment",
+        type:
+          "comment",
 
-      post:
-        post._id,
-    });
+        post:
+          post._id,
+      });
+    } catch (
+      notificationError
+    ) {
+      console.error(
+        "Delete comment notification error:",
+        notificationError
+      );
+    }
 
-    res.status(200).json({
-      message:
-        "Comment deleted successfully",
-    });
+    // =================================================
+    // RESPONSE
+    // =================================================
+
+    return res
+      .status(200)
+      .json({
+        message:
+          "Comment deleted successfully",
+
+        commentId,
+      });
   } catch (error) {
     console.error(
       "Delete comment error:",
       error
     );
 
-    res.status(500).json({
-      message:
-        "Server error",
-    });
+    return res
+      .status(500)
+      .json({
+        message:
+          error.message ||
+          "Server error",
+      });
   }
 };
 

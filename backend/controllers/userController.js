@@ -2,6 +2,8 @@ const User = require("../models/User");
 const Post = require("../models/Post");
 const Notification = require("../models/Notification");
 
+const cloudinary = require("../config/cloudinary");
+
 // =====================================================
 // GET USER PROFILE
 // =====================================================
@@ -25,17 +27,14 @@ const getUserProfile = async (req, res) => {
       return res
         .status(404)
         .json({
-          message: "User not found",
+          message:
+            "User not found",
         });
     }
 
-    // =================================================
-    // GET USER POSTS
-    // ALSO POPULATE COMMENT USERS
-    // =================================================
-
     const posts = await Post.find({
-      author: user._id,
+      author:
+        user._id,
     })
       .populate(
         "author",
@@ -60,13 +59,18 @@ const getUserProfile = async (req, res) => {
     );
 
     res.status(500).json({
-      message: "Server error",
+      message:
+        "Server error",
     });
   }
 };
 
 // =====================================================
 // UPDATE MY PROFILE
+// Supports:
+// name
+// bio
+// profile picture upload
 // =====================================================
 
 const updateProfile = async (
@@ -77,18 +81,19 @@ const updateProfile = async (
     const {
       name,
       bio,
-      profilePicture,
     } = req.body;
 
-    const user = await User.findById(
-      req.user.id
-    );
+    const user =
+      await User.findById(
+        req.user.id
+      );
 
     if (!user) {
       return res
         .status(404)
         .json({
-          message: "User not found",
+          message:
+            "User not found",
         });
     }
 
@@ -97,7 +102,10 @@ const updateProfile = async (
     // =================================================
 
     if (name !== undefined) {
-      if (!name.trim()) {
+      const cleanName =
+        name.trim();
+
+      if (!cleanName) {
         return res
           .status(400)
           .json({
@@ -106,7 +114,8 @@ const updateProfile = async (
           });
       }
 
-      user.name = name.trim();
+      user.name =
+        cleanName;
     }
 
     // =================================================
@@ -119,17 +128,55 @@ const updateProfile = async (
     }
 
     // =================================================
-    // UPDATE PROFILE PICTURE
+    // PROFILE PICTURE UPLOAD
     // =================================================
 
-    if (
-      profilePicture !== undefined
-    ) {
+    if (req.file) {
+      // Save old Cloudinary public ID
+      const oldPublicId =
+        user.profilePicturePublicId;
+
+      // New Cloudinary image URL
       user.profilePicture =
-        profilePicture.trim();
+        req.file.path;
+
+      // New Cloudinary public ID
+      user.profilePicturePublicId =
+        req.file.filename;
+
+      // =================================================
+      // DELETE OLD PROFILE IMAGE
+      // =================================================
+
+      if (oldPublicId) {
+        try {
+          await cloudinary.uploader.destroy(
+            oldPublicId,
+            {
+              resource_type:
+                "image",
+            }
+          );
+        } catch (
+          cloudinaryError
+        ) {
+          console.error(
+            "Old profile image delete error:",
+            cloudinaryError
+          );
+        }
+      }
     }
 
+    // =================================================
+    // SAVE USER
+    // =================================================
+
     await user.save();
+
+    // =================================================
+    // RESPONSE
+    // =================================================
 
     res.status(200).json({
       message:
@@ -154,6 +201,10 @@ const updateProfile = async (
         profilePicture:
           user.profilePicture || "",
 
+        profilePicturePublicId:
+          user.profilePicturePublicId ||
+          "",
+
         followers:
           user.followers || [],
 
@@ -168,7 +219,9 @@ const updateProfile = async (
     );
 
     res.status(500).json({
-      message: "Server error",
+      message:
+        error.message ||
+        "Server error",
     });
   }
 };
@@ -187,10 +240,6 @@ const followUser = async (
 
     const targetUserId =
       req.params.id;
-
-    // =================================================
-    // CANNOT FOLLOW YOURSELF
-    // =================================================
 
     if (
       currentUserId.toString() ===
@@ -226,10 +275,6 @@ const followUser = async (
         });
     }
 
-    // =================================================
-    // CHECK ALREADY FOLLOWING
-    // =================================================
-
     const alreadyFollowing =
       currentUser.following.some(
         (id) =>
@@ -246,17 +291,9 @@ const followUser = async (
         });
     }
 
-    // =================================================
-    // ADD TO FOLLOWING
-    // =================================================
-
     currentUser.following.push(
       targetUserId
     );
-
-    // =================================================
-    // ADD TO FOLLOWERS
-    // =================================================
 
     targetUser.followers.push(
       currentUserId
@@ -265,10 +302,6 @@ const followUser = async (
     await currentUser.save();
 
     await targetUser.save();
-
-    // =================================================
-    // FOLLOW NOTIFICATION
-    // =================================================
 
     await Notification.create({
       recipient:
@@ -285,7 +318,8 @@ const followUser = async (
       message:
         "User followed successfully",
 
-      following: true,
+      following:
+        true,
 
       followersCount:
         targetUser.followers.length,
@@ -297,7 +331,8 @@ const followUser = async (
     );
 
     res.status(500).json({
-      message: "Server error",
+      message:
+        "Server error",
     });
   }
 };
@@ -339,10 +374,6 @@ const unfollowUser = async (
         });
     }
 
-    // =================================================
-    // CHECK FOLLOWING
-    // =================================================
-
     const isFollowing =
       currentUser.following.some(
         (id) =>
@@ -359,20 +390,12 @@ const unfollowUser = async (
         });
     }
 
-    // =================================================
-    // REMOVE FROM FOLLOWING
-    // =================================================
-
     currentUser.following =
       currentUser.following.filter(
         (id) =>
           id.toString() !==
           targetUserId.toString()
       );
-
-    // =================================================
-    // REMOVE FROM FOLLOWERS
-    // =================================================
 
     targetUser.followers =
       targetUser.followers.filter(
@@ -384,10 +407,6 @@ const unfollowUser = async (
     await currentUser.save();
 
     await targetUser.save();
-
-    // =================================================
-    // REMOVE FOLLOW NOTIFICATION
-    // =================================================
 
     await Notification.findOneAndDelete({
       recipient:
@@ -404,7 +423,8 @@ const unfollowUser = async (
       message:
         "User unfollowed successfully",
 
-      following: false,
+      following:
+        false,
 
       followersCount:
         targetUser.followers.length,
@@ -416,7 +436,8 @@ const unfollowUser = async (
     );
 
     res.status(500).json({
-      message: "Server error",
+      message:
+        "Server error",
     });
   }
 };
@@ -461,6 +482,7 @@ const searchUsers = async (
                 "i",
             },
           },
+
           {
             email: {
               $regex:
@@ -487,7 +509,8 @@ const searchUsers = async (
     );
 
     res.status(500).json({
-      message: "Server error",
+      message:
+        "Server error",
     });
   }
 };

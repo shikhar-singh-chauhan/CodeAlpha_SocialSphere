@@ -17,20 +17,28 @@ const {
 
 const protect = require("../middleware/authMiddleware");
 
+const upload = require("../middleware/uploadMiddleware");
+
 const router = express.Router();
 
 // ===============================
 // CREATE POST
+// Supports text + images/videos
+// Field name from frontend: media
+// Maximum files: 4
 // ===============================
+
 router.post(
   "/",
   protect,
+  upload.array("media", 4),
   createPost
 );
 
 // ===============================
 // GET ALL POSTS
 // ===============================
+
 router.get(
   "/",
   getPosts
@@ -38,8 +46,9 @@ router.get(
 
 // ===============================
 // GET PERSONALIZED FEED
-// IMPORTANT: BEFORE /:id
+// IMPORTANT: MUST COME BEFORE /:id
 // ===============================
+
 router.get(
   "/feed",
   protect,
@@ -50,6 +59,7 @@ router.get(
 // CREATE COMMENT
 // POST /api/posts/:postId/comments
 // ===============================
+
 router.post(
   "/:postId/comments",
   protect,
@@ -60,6 +70,7 @@ router.post(
 // GET COMMENTS
 // GET /api/posts/:postId/comments
 // ===============================
+
 router.get(
   "/:postId/comments",
   protect,
@@ -70,6 +81,7 @@ router.get(
 // DELETE COMMENT
 // DELETE /api/posts/:postId/comments/:id
 // ===============================
+
 router.delete(
   "/:postId/comments/:id",
   protect,
@@ -79,6 +91,7 @@ router.delete(
 // ===============================
 // LIKE / UNLIKE POST
 // ===============================
+
 router.post(
   "/:id/like",
   protect,
@@ -88,6 +101,7 @@ router.post(
 // ===============================
 // DELETE POST
 // ===============================
+
 router.delete(
   "/:id",
   protect,
@@ -98,6 +112,7 @@ router.delete(
 // GET SINGLE POST
 // KEEP LAST
 // ===============================
+
 router.get(
   "/:id",
   getPostById

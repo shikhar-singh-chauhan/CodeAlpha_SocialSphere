@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
@@ -14,6 +18,9 @@ function Home() {
   const [content, setContent] =
     useState("");
 
+  const [selectedMedia, setSelectedMedia] =
+    useState([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -22,6 +29,9 @@ function Home() {
 
   const [error, setError] =
     useState("");
+
+  const fileInputRef =
+    useRef(null);
 
   // =====================================================
   // LOAD FEED
@@ -63,6 +73,188 @@ function Home() {
   }, []);
 
   // =====================================================
+  // CLEAN PREVIEW URLS
+  // =====================================================
+
+  useEffect(() => {
+    return () => {
+      selectedMedia.forEach(
+        (item) => {
+          if (item.previewUrl) {
+            URL.revokeObjectURL(
+              item.previewUrl
+            );
+          }
+        }
+      );
+    };
+  }, [selectedMedia]);
+
+  // =====================================================
+  // SELECT MEDIA
+  // =====================================================
+
+  const handleMediaSelect = (
+    e
+  ) => {
+    const files =
+      Array.from(
+        e.target.files || []
+      );
+
+    if (files.length === 0) {
+      return;
+    }
+
+    // Remaining number of media slots
+    const remainingSlots =
+      4 -
+      selectedMedia.length;
+
+    if (remainingSlots <= 0) {
+      setError(
+        "You can upload a maximum of 4 files per post."
+      );
+
+      e.target.value = "";
+
+      return;
+    }
+
+    const allowedImageTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    const allowedVideoTypes = [
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+    ];
+
+    const validFiles = [];
+
+    for (const file of files) {
+      if (
+        validFiles.length >=
+        remainingSlots
+      ) {
+        break;
+      }
+
+      const isImage =
+        allowedImageTypes.includes(
+          file.type
+        );
+
+      const isVideo =
+        allowedVideoTypes.includes(
+          file.type
+        );
+
+      if (
+        !isImage &&
+        !isVideo
+      ) {
+        setError(
+          "Only JPG, PNG, WEBP, MP4, WEBM and MOV files are allowed."
+        );
+
+        continue;
+      }
+
+      // Backend limit is 50 MB
+      const maxSize =
+        50 *
+        1024 *
+        1024;
+
+      if (
+        file.size >
+        maxSize
+      ) {
+        setError(
+          `${file.name} is larger than 50 MB.`
+        );
+
+        continue;
+      }
+
+      validFiles.push({
+        file,
+
+        type:
+          isVideo
+            ? "video"
+            : "image",
+
+        previewUrl:
+          URL.createObjectURL(
+            file
+          ),
+
+        id:
+          `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
+      });
+    }
+
+    setSelectedMedia(
+      (current) => [
+        ...current,
+        ...validFiles,
+      ]
+    );
+
+    // Allows selecting same file again later
+    e.target.value = "";
+  };
+
+  // =====================================================
+  // REMOVE SELECTED MEDIA
+  // =====================================================
+
+  const handleRemoveMedia = (
+    mediaId
+  ) => {
+    setSelectedMedia(
+      (current) => {
+        const itemToRemove =
+          current.find(
+            (item) =>
+              item.id ===
+              mediaId
+          );
+
+        if (
+          itemToRemove?.previewUrl
+        ) {
+          URL.revokeObjectURL(
+            itemToRemove.previewUrl
+          );
+        }
+
+        return current.filter(
+          (item) =>
+            item.id !==
+            mediaId
+        );
+      }
+    );
+
+    setError("");
+  };
+
+  // =====================================================
+  // OPEN FILE PICKER
+  // =====================================================
+
+  const handleOpenMediaPicker =
+    () => {
+      fileInputRef.current?.click();
+    };
+
+  // =====================================================
   // CREATE POST
   // =====================================================
 
@@ -71,7 +263,16 @@ function Home() {
   ) => {
     e.preventDefault();
 
-    if (!content.trim()) {
+    const hasText =
+      content.trim().length > 0;
+
+    const hasMedia =
+      selectedMedia.length > 0;
+
+    if (
+      !hasText &&
+      !hasMedia
+    ) {
       return;
     }
 
@@ -79,15 +280,36 @@ function Home() {
       setCreating(true);
       setError("");
 
+      // ===============================================
+      // CREATE FORMDATA
+      // ===============================================
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        "content",
+        content.trim()
+      );
+
+      selectedMedia.forEach(
+        (item) => {
+          formData.append(
+            "media",
+            item.file
+          );
+        }
+      );
+
+      // ===============================================
+      // SEND POST
+      // ===============================================
+
       const data = await api(
         "/posts",
         {
           method: "POST",
-
-          body: JSON.stringify({
-            content:
-              content.trim(),
-          }),
+          body: formData,
         }
       );
 
@@ -100,7 +322,24 @@ function Home() {
         );
       }
 
+      // ===============================================
+      // CLEAN OLD PREVIEW URLS
+      // ===============================================
+
+      selectedMedia.forEach(
+        (item) => {
+          if (
+            item.previewUrl
+          ) {
+            URL.revokeObjectURL(
+              item.previewUrl
+            );
+          }
+        }
+      );
+
       setContent("");
+      setSelectedMedia([]);
     } catch (error) {
       console.error(
         "Create post error:",
@@ -142,6 +381,7 @@ function Home() {
   if (loading) {
     return (
       <main className="home-page">
+
         <div className="home-loading">
 
           <div className="loading-spinner"></div>
@@ -151,6 +391,7 @@ function Home() {
           </p>
 
         </div>
+
       </main>
     );
   }
@@ -264,6 +505,8 @@ function Home() {
           className="create-post-form"
         >
 
+          {/* TEXT */}
+
           <textarea
             value={content}
             onChange={(e) =>
@@ -276,6 +519,130 @@ function Home() {
             maxLength="5000"
           />
 
+          {/* =========================================
+              MEDIA PREVIEW
+          ========================================= */}
+
+          {selectedMedia.length >
+            0 && (
+            <div className="create-media-preview">
+
+              {selectedMedia.map(
+                (item) => (
+                  <div
+                    key={item.id}
+                    className="create-media-item"
+                  >
+
+                    {item.type ===
+                    "video" ? (
+                      <video
+                        src={
+                          item.previewUrl
+                        }
+                        controls
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img
+                        src={
+                          item.previewUrl
+                        }
+                        alt="Post preview"
+                      />
+                    )}
+
+                    <button
+                      type="button"
+                      className="create-media-remove"
+                      onClick={() =>
+                        handleRemoveMedia(
+                          item.id
+                        )
+                      }
+                      aria-label="Remove media"
+                    >
+                      ×
+                    </button>
+
+                    <span className="create-media-type">
+                      {item.type ===
+                      "video"
+                        ? "VIDEO"
+                        : "IMAGE"}
+                    </span>
+
+                  </div>
+                )
+              )}
+
+            </div>
+          )}
+
+          {/* =========================================
+              HIDDEN FILE INPUT
+          ========================================= */}
+
+          <input
+            ref={
+              fileInputRef
+            }
+            type="file"
+            accept="
+              image/jpeg,
+              image/png,
+              image/webp,
+              video/mp4,
+              video/webm,
+              video/quicktime
+            "
+            multiple
+            onChange={
+              handleMediaSelect
+            }
+            className="create-media-input"
+          />
+
+          {/* =========================================
+              TOOLBAR
+          ========================================= */}
+
+          <div className="create-post-toolbar">
+
+            <button
+              type="button"
+              className="create-media-button"
+              onClick={
+                handleOpenMediaPicker
+              }
+              disabled={
+                creating ||
+                selectedMedia.length >=
+                  4
+              }
+            >
+              <span className="create-media-button-icon">
+                +
+              </span>
+
+              <span>
+                Photo / Video
+              </span>
+            </button>
+
+            <span className="create-media-limit">
+              {
+                selectedMedia.length
+              }
+              /4 media
+            </span>
+
+          </div>
+
+          {/* =========================================
+              FOOTER
+          ========================================= */}
+
           <div className="create-post-footer">
 
             <span className="character-count">
@@ -286,11 +653,15 @@ function Home() {
               type="submit"
               disabled={
                 creating ||
-                !content.trim()
+                (
+                  !content.trim() &&
+                  selectedMedia.length ===
+                    0
+                )
               }
             >
               {creating
-                ? "Posting..."
+                ? "Publishing..."
                 : "Publish Post"}
             </button>
 

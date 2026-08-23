@@ -5746,3 +5746,855 @@ body::after {
     filter: none;
   }
 }
+
+/* =========================================================
+   POST MEDIA — INSTAGRAM STYLE
+   Keeps images/videos inside the post card
+   ========================================================= */
+
+.post-card {
+  overflow: hidden;
+}
+
+.post-media-grid {
+  display: grid;
+
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  gap: 4px;
+
+  margin: 12px 0 16px;
+
+  overflow: hidden;
+
+  border-radius: 14px;
+
+  background: #070a0e;
+}
+
+/* ===============================
+   1 MEDIA
+   =============================== */
+
+.post-media-count-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.post-media-count-1 .post-media-item {
+  width: 100%;
+
+  aspect-ratio: 4 / 5;
+
+  max-height: 560px;
+}
+
+/* ===============================
+   2 MEDIA
+   =============================== */
+
+.post-media-count-2 {
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+}
+
+.post-media-count-2 .post-media-item {
+  aspect-ratio: 1 / 1;
+}
+
+/* ===============================
+   3 MEDIA
+   =============================== */
+
+.post-media-count-3 {
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  grid-template-rows:
+    repeat(2, minmax(0, 1fr));
+}
+
+.post-media-count-3
+.post-media-item:first-child {
+  grid-row: 1 / 3;
+}
+
+.post-media-count-3
+.post-media-item:not(:first-child) {
+  aspect-ratio: 1 / 1;
+}
+
+/* ===============================
+   4 MEDIA
+   =============================== */
+
+.post-media-count-4 {
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+}
+
+.post-media-count-4 .post-media-item {
+  aspect-ratio: 1 / 1;
+}
+
+/* ===============================
+   MEDIA ITEM
+   =============================== */
+
+.post-media-item {
+  position: relative;
+
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  overflow: hidden;
+
+  background: #070a0e;
+}
+
+.post-media-item img,
+.post-media-item video {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  max-width: 100%;
+
+  object-fit: cover;
+
+  margin: 0;
+
+  border: 0;
+}
+
+/* ===============================
+   SINGLE IMAGE / VIDEO
+   =============================== */
+
+.post-media-count-1
+.post-media-item img,
+.post-media-count-1
+.post-media-item video {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+/* =========================================================
+   CREATE POST PREVIEW
+   ========================================================= */
+
+.create-media-preview {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  width: 100%;
+  max-width: 100%;
+
+  gap: 8px;
+
+  margin-top: 12px;
+
+  overflow: hidden;
+}
+
+.create-media-item {
+  position: relative;
+
+  width: 100%;
+  min-width: 0;
+
+  aspect-ratio: 1 / 1;
+
+  overflow: hidden;
+
+  border-radius: 13px;
+
+  background: #070a0e;
+}
+
+.create-media-item img,
+.create-media-item video {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  max-width: 100%;
+
+  object-fit: cover;
+}
+
+/* =========================================================
+   SAFETY — PREVENT OVERFLOW
+   ========================================================= */
+
+.post-content,
+.post-media-grid,
+.post-stats,
+.post-actions,
+.comments-section,
+.comments-list,
+.comment-item,
+.comment-body,
+.comment-form,
+.comment-input-wrapper {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .post-media-grid {
+    gap: 3px;
+
+    border-radius: 11px;
+  }
+
+  .post-media-count-1
+  .post-media-item {
+    aspect-ratio: 4 / 5;
+
+    max-height: 480px;
+  }
+
+  .create-media-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .create-media-item {
+    aspect-ratio: 4 / 5;
+
+    max-height: 450px;
+  }
+}
+
+/* =========================================================
+   EDIT PROFILE — PHOTO UPLOAD
+   ========================================================= */
+
+.edit-profile-photo-section {
+  display: flex;
+  align-items: center;
+
+  gap: 18px;
+
+  padding: 16px;
+
+  border:
+    1px solid rgba(
+      255,
+      255,
+      255,
+      0.07
+    );
+
+  border-radius: 16px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.025),
+      rgba(255, 255, 255, 0.008)
+    ),
+    rgba(11, 15, 20, 0.62);
+}
+
+
+/* =========================================================
+   PHOTO PREVIEW
+   ========================================================= */
+
+.edit-profile-photo-preview {
+  width: 92px;
+  height: 92px;
+
+  flex: 0 0 auto;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  border-radius: 50%;
+
+  border:
+    3px solid
+    rgba(
+      200,
+      255,
+      61,
+      0.22
+    );
+
+  background:
+    linear-gradient(
+      145deg,
+      #29313a,
+      #13181e
+    );
+
+  color: var(--text-primary);
+
+  font-family:
+    var(--font-heading);
+
+  font-size: 27px;
+  font-weight: 800;
+
+  box-shadow:
+    0 10px 28px
+    rgba(0, 0, 0, 0.32),
+    0 0 20px
+    rgba(200, 255, 61, 0.035);
+}
+
+
+/* IMAGE */
+
+.edit-profile-photo-preview img {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+
+/* =========================================================
+   PHOTO CONTROLS
+   ========================================================= */
+
+.edit-profile-photo-controls {
+  flex: 1;
+
+  min-width: 0;
+}
+
+
+.edit-profile-photo-controls strong {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: var(--text-primary);
+
+  font-family:
+    var(--font-heading);
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+
+.edit-profile-photo-controls p {
+  margin-bottom: 11px;
+
+  color: var(--text-muted);
+
+  font-size: 11px;
+
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   CHANGE / UPLOAD PHOTO BUTTON
+   ========================================================= */
+
+.edit-profile-photo-button {
+  padding: 8px 12px;
+
+  background:
+    rgba(
+      200,
+      255,
+      61,
+      0.06
+    );
+
+  border:
+    1px solid
+    rgba(
+      200,
+      255,
+      61,
+      0.20
+    );
+
+  color: var(--accent);
+
+  font-size: 11px;
+  font-weight: 800;
+}
+
+
+.edit-profile-photo-button:hover:not(:disabled) {
+  background:
+    rgba(
+      200,
+      255,
+      61,
+      0.11
+    );
+
+  border-color:
+    rgba(
+      200,
+      255,
+      61,
+      0.38
+    );
+
+  color: var(--accent-hover);
+
+  transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   HIDDEN FILE INPUT
+   ========================================================= */
+
+.edit-profile-photo-input {
+  display: none;
+}
+
+
+/* =========================================================
+   PROFILE MAIN AVATAR — POLISH
+   ========================================================= */
+
+.profile-main-avatar {
+  position: relative;
+
+  overflow: hidden;
+
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+
+.profile-main-avatar:hover {
+  transform: translateY(-2px);
+
+  border-color:
+    rgba(
+      200,
+      255,
+      61,
+      0.30
+    );
+
+  box-shadow:
+    0 12px 32px
+    rgba(0, 0, 0, 0.36),
+    0 0 22px
+    rgba(200, 255, 61, 0.045);
+}
+
+
+.profile-main-avatar img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* =========================================================
+   NAVBAR AVATAR IMAGE
+   ========================================================= */
+
+.navbar-avatar {
+  overflow: hidden;
+}
+
+
+.navbar-avatar img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* =========================================================
+   POST AVATAR IMAGE
+   ========================================================= */
+
+.post-avatar,
+.profile-post-avatar,
+.comment-avatar,
+.comment-input-avatar,
+.profile-comment-avatar,
+.profile-comment-input-avatar {
+  overflow: hidden;
+}
+
+
+.post-avatar img,
+.profile-post-avatar img,
+.comment-avatar img,
+.comment-input-avatar img,
+.profile-comment-avatar img,
+.profile-comment-input-avatar img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .edit-profile-photo-section {
+    flex-direction: column;
+
+    align-items: center;
+
+    text-align: center;
+
+    gap: 13px;
+  }
+
+
+  .edit-profile-photo-preview {
+    width: 100px;
+    height: 100px;
+  }
+
+
+  .edit-profile-photo-controls {
+    width: 100%;
+  }
+
+
+  .edit-profile-photo-button {
+    width: 100%;
+  }
+
+}
+
+/* =========================================================
+   SOCIALSPHERE — FINAL AVATAR SYSTEM
+   Profile pictures stay inside circular avatar containers.
+   Actual post uploads remain controlled only by .post-media-item.
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   AVATAR CONTAINERS
+   --------------------------------------------------------- */
+
+.navbar-avatar,
+.create-post-avatar,
+.post-avatar,
+.comment-avatar,
+.comment-input-avatar,
+.profile-main-avatar,
+.profile-post-avatar,
+.profile-comment-avatar,
+.profile-comment-input-avatar,
+.search-user-avatar,
+.notification-avatar,
+.edit-profile-photo-preview {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden !important;
+  border-radius: 50% !important;
+}
+
+/* Navbar */
+.navbar-avatar {
+  width: 35px !important;
+  height: 35px !important;
+  min-width: 35px !important;
+  min-height: 35px !important;
+  max-width: 35px !important;
+  max-height: 35px !important;
+}
+
+/* Home create-post avatar */
+.create-post-avatar {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  min-height: 42px !important;
+  max-width: 42px !important;
+  max-height: 42px !important;
+}
+
+/* Feed post author avatar */
+.post-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+}
+
+/* Feed comment avatars */
+.comment-avatar,
+.comment-input-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+}
+
+/* Main profile image */
+.profile-main-avatar {
+  width: 98px !important;
+  height: 98px !important;
+  min-width: 98px !important;
+  min-height: 98px !important;
+  max-width: 98px !important;
+  max-height: 98px !important;
+}
+
+/* Profile-page post author */
+.profile-post-avatar {
+  width: 39px !important;
+  height: 39px !important;
+  min-width: 39px !important;
+  min-height: 39px !important;
+  max-width: 39px !important;
+  max-height: 39px !important;
+}
+
+/* Profile-page comments + write-comment avatar */
+.profile-comment-avatar,
+.profile-comment-input-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+}
+
+/* Search */
+.search-user-avatar {
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 52px !important;
+  min-height: 52px !important;
+  max-width: 52px !important;
+  max-height: 52px !important;
+}
+
+/* Notifications */
+.notification-avatar {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+}
+
+/* Edit-profile preview */
+.edit-profile-photo-preview {
+  width: 92px !important;
+  height: 92px !important;
+  min-width: 92px !important;
+  min-height: 92px !important;
+  max-width: 92px !important;
+  max-height: 92px !important;
+}
+
+/* ---------------------------------------------------------
+   CRITICAL: ALL PROFILE/AVATAR IMAGES STAY IN THEIR CIRCLE
+   --------------------------------------------------------- */
+
+.navbar-avatar > img,
+.create-post-avatar > img,
+.post-avatar > img,
+.comment-avatar > img,
+.comment-input-avatar > img,
+.profile-main-avatar > img,
+.profile-post-avatar > img,
+.profile-comment-avatar > img,
+.profile-comment-input-avatar > img,
+.search-user-avatar > img,
+.notification-avatar > img,
+.edit-profile-photo-preview > img {
+  position: static !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  transform: none !important;
+}
+
+/* ---------------------------------------------------------
+   PROFILE COMMENT LAYOUT
+   Prevent current-user avatar from becoming a media block.
+   --------------------------------------------------------- */
+
+.profile-comment-form,
+.comment-form {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.profile-comment-form {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.profile-comment-form input,
+.comment-form input,
+.comment-input-wrapper {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-comment-form > button,
+.comment-form > button,
+.comment-send-button {
+  flex: 0 0 auto;
+}
+
+.profile-comment-item,
+.comment-item {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.profile-comment-body,
+.comment-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------
+   POST MEDIA REMAINS LARGE ONLY HERE
+   This intentionally does NOT include any avatar selector.
+   --------------------------------------------------------- */
+
+.post-media-item {
+  overflow: hidden;
+}
+
+.post-media-item > img,
+.post-media-item > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  object-fit: cover;
+}
+
+/* ---------------------------------------------------------
+   MOBILE
+   --------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  .edit-profile-photo-preview {
+    width: 100px !important;
+    height: 100px !important;
+    min-width: 100px !important;
+    min-height: 100px !important;
+    max-width: 100px !important;
+    max-height: 100px !important;
+  }
+}
+
+/* =========================================================
+   PROFILE POST DELETE
+   ========================================================= */
+
+.profile-post-header-row {
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  margin-bottom: 16px;
+}
+
+.profile-post-header-row
+.profile-post-author {
+  margin-bottom: 0;
+}
+
+.profile-post-delete {
+  flex: 0 0 auto;
+
+  padding: 6px 10px;
+
+  border:
+    1px solid
+    rgba(255, 102, 102, 0.18);
+
+  background:
+    rgba(255, 102, 102, 0.04);
+
+  color: var(--text-muted);
+
+  font-size: 10px;
+}
+
+.profile-post-delete:hover:not(:disabled) {
+  background:
+    rgba(255, 102, 102, 0.11);
+
+  border-color:
+    rgba(255, 102, 102, 0.35);
+
+  color: var(--danger);
+
+  transform: none;
+}

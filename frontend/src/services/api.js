@@ -1,7 +1,42 @@
 const API_URL = "http://localhost:5000/api";
 
-const api = async (endpoint, options = {}) => {
-  const token = localStorage.getItem("token");
+const api = async (
+  endpoint,
+  options = {}
+) => {
+  const token =
+    localStorage.getItem(
+      "token"
+    );
+
+  // ==========================================
+  // DETECT FORMDATA
+  // ==========================================
+
+  const isFormData =
+    options.body instanceof FormData;
+
+  // ==========================================
+  // HEADERS
+  // ==========================================
+
+  const headers = {
+    ...(token
+      ? {
+          Authorization:
+            `Bearer ${token}`,
+        }
+      : {}),
+
+    ...(isFormData
+      ? {}
+      : {
+          "Content-Type":
+            "application/json",
+        }),
+
+    ...(options.headers || {}),
+  };
 
   let response;
 
@@ -10,46 +45,49 @@ const api = async (endpoint, options = {}) => {
       `${API_URL}${endpoint}`,
       {
         ...options,
-
-        headers: {
-          "Content-Type": "application/json",
-
-          ...(token
-            ? {
-                Authorization: `Bearer ${token}`,
-              }
-            : {}),
-
-          ...(options.headers || {}),
-        },
+        headers,
       }
     );
   } catch (error) {
-    const networkError = new Error(
-      "Unable to connect to the server."
-    );
+    const networkError =
+      new Error(
+        "Unable to connect to the server."
+      );
 
     networkError.status = 0;
 
     throw networkError;
   }
 
+  // ==========================================
+  // PARSE RESPONSE
+  // ==========================================
+
   let data = {};
 
   try {
-    data = await response.json();
+    data =
+      await response.json();
   } catch {
     data = {};
   }
 
-  if (!response.ok) {
-    const error = new Error(
-      data.message ||
-        "Something went wrong"
-    );
+  // ==========================================
+  // ERROR RESPONSE
+  // ==========================================
 
-    error.status = response.status;
-    error.data = data;
+  if (!response.ok) {
+    const error =
+      new Error(
+        data.message ||
+          "Something went wrong"
+      );
+
+    error.status =
+      response.status;
+
+    error.data =
+      data;
 
     throw error;
   }

@@ -11,10 +11,6 @@ function PostCard({
 }) {
   const { user } = useAuth();
 
-  // =====================================================
-  // STATE
-  // =====================================================
-
   const [commentText, setCommentText] =
     useState("");
 
@@ -29,31 +25,16 @@ function PostCard({
     setShowAllComments,
   ] = useState(false);
 
-  // =====================================================
-  // POST DATA
-  // =====================================================
-
   const likes = post.likes || [];
   const comments = post.comments || [];
-
-  // =====================================================
-  // COMMENTS TO DISPLAY
-  // =====================================================
+  const media = post.media || [];
 
   const visibleComments = showAllComments
     ? comments
     : comments.slice(-3);
 
-  // =====================================================
-  // CURRENT USER ID
-  // =====================================================
-
   const currentUserId =
     user?._id || user?.id;
-
-  // =====================================================
-  // CHECK IF POST IS LIKED
-  // =====================================================
 
   const isLiked = likes.some((like) => {
     const likeId =
@@ -66,10 +47,6 @@ function PostCard({
       currentUserId?.toString()
     );
   });
-
-  // =====================================================
-  // AUTHOR
-  // =====================================================
 
   const author = post.author;
 
@@ -88,17 +65,9 @@ function PostCard({
       ?.charAt(0)
       ?.toUpperCase() || "U";
 
-  // =====================================================
-  // IS THIS MY POST?
-  // =====================================================
-
   const isOwnPost =
     authorId?.toString() ===
     currentUserId?.toString();
-
-  // =====================================================
-  // UPDATE POST IN PARENT
-  // =====================================================
 
   const updatePost = (updatedPost) => {
     if (onPostUpdate) {
@@ -111,16 +80,12 @@ function PostCard({
   // =====================================================
 
   const handleLike = async () => {
-    if (liking) {
-      return;
-    }
+    if (liking) return;
 
     try {
       setLiking(true);
 
-      if (onError) {
-        onError("");
-      }
+      onError?.("");
 
       const data = await api(
         `/posts/${post._id}/like`,
@@ -130,10 +95,6 @@ function PostCard({
       );
 
       let updatedLikes = [...likes];
-
-      // ===============================================
-      // LIKED
-      // ===============================================
 
       if (data.liked) {
         const alreadyLiked =
@@ -154,13 +115,7 @@ function PostCard({
             currentUserId
           );
         }
-      }
-
-      // ===============================================
-      // UNLIKED
-      // ===============================================
-
-      else {
+      } else {
         updatedLikes =
           updatedLikes.filter((like) => {
             const likeId =
@@ -185,12 +140,10 @@ function PostCard({
         error
       );
 
-      if (onError) {
-        onError(
-          error.message ||
-            "Unable to like post."
-        );
-      }
+      onError?.(
+        error.message ||
+          "Unable to like post."
+      );
     } finally {
       setLiking(false);
     }
@@ -212,9 +165,7 @@ function PostCard({
       try {
         setCommenting(true);
 
-        if (onError) {
-          onError("");
-        }
+        onError?.("");
 
         const data = await api(
           `/posts/${post._id}/comments`,
@@ -249,12 +200,10 @@ function PostCard({
           error
         );
 
-        if (onError) {
-          onError(
-            error.message ||
-              "Unable to create comment."
-          );
-        }
+        onError?.(
+          error.message ||
+            "Unable to create comment."
+        );
       } finally {
         setCommenting(false);
       }
@@ -266,14 +215,10 @@ function PostCard({
 
   const handleDeleteComment =
     async (commentId) => {
-      if (!commentId) {
-        return;
-      }
+      if (!commentId) return;
 
       try {
-        if (onError) {
-          onError("");
-        }
+        onError?.("");
 
         await api(
           `/posts/${post._id}/comments/${commentId}`,
@@ -298,12 +243,10 @@ function PostCard({
           error
         );
 
-        if (onError) {
-          onError(
-            error.message ||
-              "Unable to delete comment."
-          );
-        }
+        onError?.(
+          error.message ||
+            "Unable to delete comment."
+        );
       }
     };
 
@@ -332,10 +275,6 @@ function PostCard({
       }
     >
 
-      {/* =================================================
-          YOUR POST LABEL
-      ================================================= */}
-
       {isOwnPost && (
         <span className="own-post-label">
           YOUR POST
@@ -349,8 +288,6 @@ function PostCard({
       <div className="post-header">
 
         <div className="post-author">
-
-          {/* AVATAR */}
 
           <div className="post-avatar">
 
@@ -366,8 +303,6 @@ function PostCard({
             )}
 
           </div>
-
-          {/* AUTHOR INFORMATION */}
 
           <div className="post-author-details">
 
@@ -399,12 +334,66 @@ function PostCard({
       </div>
 
       {/* =================================================
-          POST CONTENT
+          POST TEXT
       ================================================= */}
 
-      <div className="post-content">
-        {post.content}
-      </div>
+      {post.content && (
+        <div className="post-content">
+          {post.content}
+        </div>
+      )}
+
+      {/* =================================================
+          POST MEDIA
+      ================================================= */}
+
+      {media.length > 0 && (
+        <div
+          className={`post-media-grid post-media-count-${Math.min(
+            media.length,
+            4
+          )}`}
+        >
+
+          {media.map(
+            (mediaItem, index) => (
+              <div
+                key={
+                  mediaItem.publicId ||
+                  mediaItem.url ||
+                  index
+                }
+                className="post-media-item"
+              >
+
+                {mediaItem.resourceType ===
+                "video" ? (
+                  <video
+                    src={
+                      mediaItem.url
+                    }
+                    controls
+                    preload="metadata"
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={
+                      mediaItem.url
+                    }
+                    alt={`Post media ${
+                      index + 1
+                    }`}
+                    loading="lazy"
+                  />
+                )}
+
+              </div>
+            )
+          )}
+
+        </div>
+      )}
 
       {/* =================================================
           POST STATS
@@ -433,12 +422,10 @@ function PostCard({
       </div>
 
       {/* =================================================
-          POST ACTIONS
+          ACTIONS
       ================================================= */}
 
       <div className="post-actions">
-
-        {/* LIKE */}
 
         <button
           type="button"
@@ -467,8 +454,6 @@ function PostCard({
 
         </button>
 
-        {/* COMMENT */}
-
         <button
           type="button"
           className="post-action"
@@ -490,12 +475,10 @@ function PostCard({
       </div>
 
       {/* =================================================
-          COMMENTS SECTION
+          COMMENTS
       ================================================= */}
 
       <div className="comments-section">
-
-        {/* COMMENTS HEADER */}
 
         <div className="comments-heading">
 
@@ -511,10 +494,6 @@ function PostCard({
 
         </div>
 
-        {/* =================================================
-            NO COMMENTS
-        ================================================= */}
-
         {comments.length === 0 && (
           <p className="no-comments">
             No comments yet. Start the
@@ -522,19 +501,11 @@ function PostCard({
           </p>
         )}
 
-        {/* =================================================
-            COMMENT LIST
-        ================================================= */}
-
         {comments.length > 0 && (
           <div className="comments-list">
 
             {visibleComments.map(
               (comment) => {
-                // Support both:
-                // comment.user / text
-                // comment.author / content
-
                 const commentUser =
                   comment.user ||
                   comment.author;
@@ -570,8 +541,6 @@ function PostCard({
                     className="comment-item"
                   >
 
-                    {/* COMMENT AVATAR */}
-
                     <div className="comment-avatar">
 
                       {commentUser
@@ -591,13 +560,9 @@ function PostCard({
 
                     </div>
 
-                    {/* COMMENT BODY */}
-
                     <div className="comment-body">
 
                       <div className="comment-top">
-
-                        {/* COMMENT USER */}
 
                         {commentUserId ? (
                           <Link
@@ -611,8 +576,6 @@ function PostCard({
                             {commentName}
                           </span>
                         )}
-
-                        {/* DELETE */}
 
                         {canDelete && (
                           <button
@@ -630,13 +593,9 @@ function PostCard({
 
                       </div>
 
-                      {/* COMMENT TEXT */}
-
                       <p>
                         {text}
                       </p>
-
-                      {/* COMMENT DATE */}
 
                       {comment.createdAt && (
                         <small className="comment-date">
@@ -655,10 +614,6 @@ function PostCard({
 
           </div>
         )}
-
-        {/* =================================================
-            VIEW ALL / SHOW LESS
-        ================================================= */}
 
         {comments.length > 3 && (
           <button
@@ -683,8 +638,6 @@ function PostCard({
 
         <div className="comment-form">
 
-          {/* CURRENT USER AVATAR */}
-
           <div className="comment-input-avatar">
 
             {user?.profilePicture ? (
@@ -705,8 +658,6 @@ function PostCard({
             )}
 
           </div>
-
-          {/* INPUT + SEND */}
 
           <div className="comment-input-wrapper">
 

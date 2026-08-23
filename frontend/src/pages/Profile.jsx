@@ -1,5 +1,13 @@
-import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  Link,
+  useParams,
+} from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
@@ -33,6 +41,9 @@ function Profile() {
   const [followLoading, setFollowLoading] =
     useState(false);
 
+  const [deletingPostId, setDeletingPostId] =
+    useState("");
+
   // ==========================================
   // COMMENT STATES
   // ==========================================
@@ -57,8 +68,22 @@ function Profile() {
     useState({
       name: "",
       bio: "",
-      profilePicture: "",
     });
+
+  // ==========================================
+  // PROFILE PHOTO
+  // ==========================================
+
+  const [profilePhoto, setProfilePhoto] =
+    useState(null);
+
+  const [
+    profilePhotoPreview,
+    setProfilePhotoPreview,
+  ] = useState("");
+
+  const profilePhotoInputRef =
+    useRef(null);
 
   // ==========================================
   // LOAD PROFILE
@@ -82,11 +107,25 @@ function Profile() {
         data.posts || []
       );
 
+      const currentUserId =
+        currentUser?._id ||
+        currentUser?.id;
+
       const isFollowing =
         data.user?.followers?.some(
-          (follower) =>
-            follower._id?.toString() ===
-            currentUser?._id?.toString()
+          (follower) => {
+            const followerId =
+              typeof follower ===
+              "object"
+                ? follower?._id ||
+                  follower?.id
+                : follower;
+
+            return (
+              followerId?.toString() ===
+              currentUserId?.toString()
+            );
+          }
         );
 
       setFollowing(
@@ -99,9 +138,6 @@ function Profile() {
 
         bio:
           data.user?.bio || "",
-
-        profilePicture:
-          data.user?.profilePicture || "",
       });
     } catch (error) {
       console.error(
@@ -129,6 +165,25 @@ function Profile() {
   }, [userId]);
 
   // ==========================================
+  // CLEAN PREVIEW
+  // ==========================================
+
+  useEffect(() => {
+    return () => {
+      if (
+        profilePhotoPreview &&
+        profilePhotoPreview.startsWith(
+          "blob:"
+        )
+      ) {
+        URL.revokeObjectURL(
+          profilePhotoPreview
+        );
+      }
+    };
+  }, [profilePhotoPreview]);
+
+  // ==========================================
   // FOLLOW USER
   // ==========================================
 
@@ -151,7 +206,9 @@ function Profile() {
           ...current,
 
           followers: [
-            ...(current.followers || []),
+            ...(current.followers ||
+              []),
+
             currentUser,
           ],
         })
@@ -184,6 +241,10 @@ function Profile() {
 
       setFollowing(false);
 
+      const currentUserId =
+        currentUser?._id ||
+        currentUser?.id;
+
       setProfileUser(
         (current) => ({
           ...current,
@@ -191,9 +252,19 @@ function Profile() {
           followers: (
             current.followers || []
           ).filter(
-            (follower) =>
-              follower._id?.toString() !==
-              currentUser?._id?.toString()
+            (follower) => {
+              const followerId =
+                typeof follower ===
+                "object"
+                  ? follower?._id ||
+                    follower?.id
+                  : follower;
+
+              return (
+                followerId?.toString() !==
+                currentUserId?.toString()
+              );
+            }
           ),
         })
       );
@@ -224,6 +295,10 @@ function Profile() {
         }
       );
 
+      const currentUserId =
+        currentUser?._id ||
+        currentUser?.id;
+
       setPosts((currentPosts) =>
         currentPosts.map(
           (post) => {
@@ -240,22 +315,42 @@ function Profile() {
             if (data.liked) {
               const alreadyLiked =
                 updatedLikes.some(
-                  (id) =>
-                    id.toString() ===
-                    currentUser?._id?.toString()
+                  (like) => {
+                    const likeId =
+                      typeof like ===
+                      "object"
+                        ? like?._id ||
+                          like?.id
+                        : like;
+
+                    return (
+                      likeId?.toString() ===
+                      currentUserId?.toString()
+                    );
+                  }
                 );
 
               if (!alreadyLiked) {
                 updatedLikes.push(
-                  currentUser._id
+                  currentUserId
                 );
               }
             } else {
               updatedLikes =
                 updatedLikes.filter(
-                  (id) =>
-                    id.toString() !==
-                    currentUser?._id?.toString()
+                  (like) => {
+                    const likeId =
+                      typeof like ===
+                      "object"
+                        ? like?._id ||
+                          like?.id
+                        : like;
+
+                    return (
+                      likeId?.toString() !==
+                      currentUserId?.toString()
+                    );
+                  }
                 );
             }
 
@@ -283,102 +378,174 @@ function Profile() {
   // CREATE COMMENT
   // ==========================================
 
-  const handleCreateComment = async (
-    postId
-  ) => {
-    const text =
-      commentText[postId];
+  const handleCreateComment =
+    async (postId) => {
+      const text =
+        commentText[postId];
 
-    if (
-      !text ||
-      !text.trim()
-    ) {
-      return;
-    }
+      if (
+        !text ||
+        !text.trim()
+      ) {
+        return;
+      }
 
-    try {
-      setCommenting(
-        (current) => ({
-          ...current,
-          [postId]: true,
-        })
-      );
+      try {
+        setCommenting(
+          (current) => ({
+            ...current,
+            [postId]: true,
+          })
+        );
 
-      setError("");
+        setError("");
 
-      const data = await api(
-        `/posts/${postId}/comments`,
-        {
-          method: "POST",
+        const data = await api(
+          `/posts/${postId}/comments`,
+          {
+            method: "POST",
 
-          body: JSON.stringify({
-            text:
-              text.trim(),
-          }),
-        }
-      );
+            body: JSON.stringify({
+              text:
+                text.trim(),
+            }),
+          }
+        );
 
-      setPosts(
-        (currentPosts) =>
-          currentPosts.map(
-            (post) => {
-              if (
-                post._id !== postId
-              ) {
-                return post;
+        setPosts(
+          (currentPosts) =>
+            currentPosts.map(
+              (post) => {
+                if (
+                  post._id !==
+                  postId
+                ) {
+                  return post;
+                }
+
+                return {
+                  ...post,
+
+                  comments: [
+                    ...(post.comments ||
+                      []),
+
+                    data.comment,
+                  ],
+                };
               }
+            )
+        );
 
-              return {
-                ...post,
+        setCommentText(
+          (current) => ({
+            ...current,
+            [postId]: "",
+          })
+        );
+      } catch (error) {
+        console.error(
+          "Profile comment error:",
+          error
+        );
 
-                comments: [
-                  ...(post.comments || []),
-                  data.comment,
-                ],
-              };
-            }
-          )
-      );
-
-      setCommentText(
-        (current) => ({
-          ...current,
-          [postId]: "",
-        })
-      );
-    } catch (error) {
-      console.error(
-        "Profile comment error:",
-        error
-      );
-
-      setError(
-        error.message ||
-          "Unable to comment."
-      );
-    } finally {
-      setCommenting(
-        (current) => ({
-          ...current,
-          [postId]: false,
-        })
-      );
-    }
-  };
+        setError(
+          error.message ||
+            "Unable to comment."
+        );
+      } finally {
+        setCommenting(
+          (current) => ({
+            ...current,
+            [postId]: false,
+          })
+        );
+      }
+    };
 
   // ==========================================
   // DELETE OWN COMMENT
   // ==========================================
 
-  const handleDeleteComment = async (
-    postId,
-    commentId
+  const handleDeleteComment =
+    async (
+      postId,
+      commentId
+    ) => {
+      try {
+        setError("");
+
+        await api(
+          `/posts/${postId}/comments/${commentId}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        setPosts(
+          (currentPosts) =>
+            currentPosts.map(
+              (post) => {
+                if (
+                  post._id !==
+                  postId
+                ) {
+                  return post;
+                }
+
+                return {
+                  ...post,
+
+                  comments: (
+                    post.comments || []
+                  ).filter(
+                    (comment) =>
+                      comment._id !==
+                      commentId
+                  ),
+                };
+              }
+            )
+        );
+      } catch (error) {
+        console.error(
+          "Delete comment error:",
+          error
+        );
+
+        setError(
+          error.message ||
+            "Unable to delete comment."
+        );
+      }
+    };
+
+  // ==========================================
+  // DELETE OWN POST
+  // ==========================================
+
+  const handleDeletePost = async (
+    postId
   ) => {
+    if (!postId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this post? This action cannot be undone."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     try {
+      setDeletingPostId(postId);
       setError("");
+      setSuccess("");
 
       await api(
-        `/posts/${postId}/comments/${commentId}`,
+        `/posts/${postId}`,
         {
           method: "DELETE",
         }
@@ -386,38 +553,27 @@ function Profile() {
 
       setPosts(
         (currentPosts) =>
-          currentPosts.map(
-            (post) => {
-              if (
-                post._id !== postId
-              ) {
-                return post;
-              }
-
-              return {
-                ...post,
-
-                comments: (
-                  post.comments || []
-                ).filter(
-                  (comment) =>
-                    comment._id !==
-                    commentId
-                ),
-              };
-            }
+          currentPosts.filter(
+            (post) =>
+              post._id !== postId
           )
+      );
+
+      setSuccess(
+        "Post deleted successfully."
       );
     } catch (error) {
       console.error(
-        "Delete comment error:",
+        "Delete post error:",
         error
       );
 
       setError(
         error.message ||
-          "Unable to delete comment."
+          "Unable to delete post."
       );
+    } finally {
+      setDeletingPostId("");
     }
   };
 
@@ -435,10 +591,14 @@ function Profile() {
 
       bio:
         profileUser?.bio || "",
-
-      profilePicture:
-        profileUser?.profilePicture || "",
     });
+
+    setProfilePhoto(null);
+
+    setProfilePhotoPreview(
+      profileUser?.profilePicture ||
+        ""
+    );
 
     setEditing(true);
   };
@@ -452,6 +612,19 @@ function Profile() {
       return;
     }
 
+    if (
+      profilePhotoPreview &&
+      profilePhotoPreview.startsWith(
+        "blob:"
+      )
+    ) {
+      URL.revokeObjectURL(
+        profilePhotoPreview
+      );
+    }
+
+    setProfilePhoto(null);
+    setProfilePhotoPreview("");
     setEditing(false);
   };
 
@@ -472,6 +645,85 @@ function Profile() {
       })
     );
   };
+
+  // ==========================================
+  // SELECT PROFILE PHOTO
+  // ==========================================
+
+  const handleProfilePhotoChange =
+    (e) => {
+      const file =
+        e.target.files?.[0];
+
+      if (!file) {
+        return;
+      }
+
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+      ];
+
+      if (
+        !allowedTypes.includes(
+          file.type
+        )
+      ) {
+        setError(
+          "Please select a JPG, PNG or WEBP image."
+        );
+
+        e.target.value = "";
+
+        return;
+      }
+
+      // Profile photos should not
+      // need huge files.
+      const maxSize =
+        10 *
+        1024 *
+        1024;
+
+      if (
+        file.size > maxSize
+      ) {
+        setError(
+          "Profile photo must be smaller than 10 MB."
+        );
+
+        e.target.value = "";
+
+        return;
+      }
+
+      if (
+        profilePhotoPreview &&
+        profilePhotoPreview.startsWith(
+          "blob:"
+        )
+      ) {
+        URL.revokeObjectURL(
+          profilePhotoPreview
+        );
+      }
+
+      const preview =
+        URL.createObjectURL(
+          file
+        );
+
+      setProfilePhoto(file);
+
+      setProfilePhotoPreview(
+        preview
+      );
+
+      setError("");
+
+      e.target.value = "";
+    };
 
   // ==========================================
   // SAVE PROFILE
@@ -497,41 +749,71 @@ function Profile() {
       setError("");
       setSuccess("");
 
+      // ======================================
+      // FORMDATA
+      // ======================================
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        "name",
+        editForm.name.trim()
+      );
+
+      formData.append(
+        "bio",
+        editForm.bio.trim()
+      );
+
+      if (profilePhoto) {
+        formData.append(
+          "profilePicture",
+          profilePhoto
+        );
+      }
+
+      // ======================================
+      // UPDATE PROFILE
+      // ======================================
+
       const data = await api(
         "/users/profile",
         {
           method: "PUT",
-
-          body: JSON.stringify({
-            name:
-              editForm.name.trim(),
-
-            bio:
-              editForm.bio.trim(),
-
-            profilePicture:
-              editForm.profilePicture.trim(),
-          }),
+          body: formData,
         }
       );
+
+      // ======================================
+      // UPDATE PAGE USER
+      // ======================================
 
       setProfileUser(
         (current) => ({
           ...current,
+          ...data.user,
 
           name:
             data.user?.name ||
             editForm.name.trim(),
 
           bio:
-            data.user?.bio ||
-            editForm.bio.trim(),
+            data.user?.bio ?? "",
 
           profilePicture:
-            data.user?.profilePicture ||
-            editForm.profilePicture.trim(),
+            data.user
+              ?.profilePicture ||
+            current
+              ?.profilePicture ||
+            "",
         })
       );
+
+      // ======================================
+      // UPDATE LOGGED-IN USER
+      // Navbar / Home / comments can update
+      // ======================================
 
       if (updateAuthUser) {
         updateAuthUser(
@@ -539,12 +821,64 @@ function Profile() {
         );
       }
 
+      // ======================================
+      // UPDATE AUTHOR IN LOCAL POSTS
+      // ======================================
+
+      setPosts(
+        (currentPosts) =>
+          currentPosts.map(
+            (post) => ({
+              ...post,
+
+              author:
+                typeof post.author ===
+                "object"
+                  ? {
+                      ...post.author,
+
+                      name:
+                        data.user
+                          ?.name ||
+                        editForm.name.trim(),
+
+                      profilePicture:
+                        data.user
+                          ?.profilePicture ||
+                        post.author
+                          ?.profilePicture ||
+                        "",
+                    }
+                  : post.author,
+            })
+          )
+      );
+
+      if (
+        profilePhotoPreview &&
+        profilePhotoPreview.startsWith(
+          "blob:"
+        )
+      ) {
+        URL.revokeObjectURL(
+          profilePhotoPreview
+        );
+      }
+
+      setProfilePhoto(null);
+      setProfilePhotoPreview("");
+
       setEditing(false);
 
       setSuccess(
         "Profile updated successfully."
       );
     } catch (error) {
+      console.error(
+        "Update profile error:",
+        error
+      );
+
       setError(
         error.message ||
           "Unable to update profile."
@@ -616,15 +950,25 @@ function Profile() {
   // PROFILE DATA
   // ==========================================
 
+  const currentUserId =
+    currentUser?._id ||
+    currentUser?.id;
+
+  const profileUserId =
+    profileUser?._id ||
+    profileUser?.id;
+
   const isOwnProfile =
-    currentUser?._id?.toString() ===
-    profileUser?._id?.toString();
+    currentUserId?.toString() ===
+    profileUserId?.toString();
 
   const followersCount =
-    profileUser.followers?.length || 0;
+    profileUser.followers?.length ||
+    0;
 
   const followingCount =
-    profileUser.following?.length || 0;
+    profileUser.following?.length ||
+    0;
 
   const initial =
     profileUser.name
@@ -638,7 +982,9 @@ function Profile() {
   return (
     <main className="profile-page">
 
-      {/* PROFILE CARD */}
+      {/* ======================================
+          PROFILE CARD
+      ====================================== */}
 
       <section className="profile-card">
 
@@ -775,7 +1121,9 @@ function Profile() {
         </div>
       )}
 
-      {/* POSTS TITLE */}
+      {/* ======================================
+          POSTS TITLE
+      ====================================== */}
 
       <div className="profile-posts-header">
 
@@ -795,7 +1143,9 @@ function Profile() {
 
       </div>
 
-      {/* EMPTY */}
+      {/* ======================================
+          EMPTY POSTS
+      ====================================== */}
 
       {posts.length === 0 && (
         <section className="profile-empty-posts">
@@ -825,77 +1175,168 @@ function Profile() {
 
         {posts.map(
           (post) => {
-
             const likes =
               post.likes || [];
 
             const comments =
               post.comments || [];
 
+            const media =
+              post.media || [];
+
             const isLiked =
               likes.some(
-                (id) =>
-                  id.toString() ===
-                  currentUser?._id?.toString()
+                (like) => {
+                  const likeId =
+                    typeof like ===
+                    "object"
+                      ? like?._id ||
+                        like?.id
+                      : like;
+
+                  return (
+                    likeId?.toString() ===
+                    currentUserId?.toString()
+                  );
+                }
               );
 
             return (
               <article
-                key={
-                  post._id
-                }
+                key={post._id}
                 className="profile-post-card"
               >
 
-                {/* AUTHOR */}
+                {/* AUTHOR + DELETE */}
 
-                <div className="profile-post-author">
+                <div className="profile-post-header-row">
 
-                  <div className="profile-post-avatar">
+                  <div className="profile-post-author">
 
-                    {profileUser.profilePicture ? (
-                      <img
-                        src={
-                          profileUser.profilePicture
-                        }
-                        alt={
-                          profileUser.name
-                        }
-                      />
-                    ) : (
-                      initial
-                    )}
+                    <div className="profile-post-avatar">
+
+                      {profileUser.profilePicture ? (
+                        <img
+                          src={
+                            profileUser.profilePicture
+                          }
+                          alt={
+                            profileUser.name
+                          }
+                        />
+                      ) : (
+                        initial
+                      )}
+
+                    </div>
+
+                    <div>
+
+                      <Link
+                        to={`/profile/${profileUserId}`}
+                        className="profile-post-name"
+                      >
+                        {profileUser.name}
+                      </Link>
+
+                      <small>
+                        {post.createdAt
+                          ? new Date(
+                              post.createdAt
+                            ).toLocaleString()
+                          : ""}
+                      </small>
+
+                    </div>
 
                   </div>
 
-                  <div>
-
-                    <Link
-                      to={`/profile/${profileUser._id}`}
-                      className="profile-post-name"
-                    >
-                      {
-                        profileUser.name
+                  {isOwnProfile && (
+                    <button
+                      type="button"
+                      className="profile-post-delete"
+                      onClick={() =>
+                        handleDeletePost(
+                          post._id
+                        )
                       }
-                    </Link>
-
-                    <small>
-                      {post.createdAt
-                        ? new Date(
-                            post.createdAt
-                          ).toLocaleString()
-                        : ""}
-                    </small>
-
-                  </div>
+                      disabled={
+                        deletingPostId ===
+                        post._id
+                      }
+                    >
+                      {deletingPostId ===
+                      post._id
+                        ? "Deleting..."
+                        : "Delete"}
+                    </button>
+                  )}
 
                 </div>
 
                 {/* CONTENT */}
 
-                <div className="profile-post-content">
-                  {post.content}
-                </div>
+                {post.content && (
+                  <div className="profile-post-content">
+                    {post.content}
+                  </div>
+                )}
+
+                {/* ==================================
+                    MEDIA
+                ================================== */}
+
+                {media.length > 0 && (
+                  <div
+                    className={`post-media-grid post-media-count-${Math.min(
+                      media.length,
+                      4
+                    )}`}
+                  >
+
+                    {media.map(
+                      (
+                        mediaItem,
+                        index
+                      ) => (
+                        <div
+                          key={
+                            mediaItem.publicId ||
+                            mediaItem.url ||
+                            index
+                          }
+                          className="post-media-item"
+                        >
+
+                          {mediaItem.resourceType ===
+                          "video" ? (
+                            <video
+                              src={
+                                mediaItem.url
+                              }
+                              controls
+                              preload="metadata"
+                              playsInline
+                            />
+                          ) : (
+                            <img
+                              src={
+                                mediaItem.url
+                              }
+                              alt={`Post media ${
+                                index +
+                                1
+                              }`}
+                              loading="lazy"
+                            />
+                          )}
+
+                        </div>
+                      )
+                    )}
+
+                  </div>
+                )}
 
                 {/* STATS */}
 
@@ -917,9 +1358,7 @@ function Profile() {
 
                 </div>
 
-                {/* ======================================
-                    LIKE / COMMENT ACTIONS
-                ====================================== */}
+                {/* ACTIONS */}
 
                 <div className="profile-post-actions">
 
@@ -957,9 +1396,7 @@ function Profile() {
 
                 </div>
 
-                {/* ======================================
-                    COMMENTS
-                ====================================== */}
+                {/* COMMENTS */}
 
                 <div className="profile-comments-section">
 
@@ -967,7 +1404,8 @@ function Profile() {
                     Comments
                   </div>
 
-                  {comments.length === 0 && (
+                  {comments.length ===
+                    0 && (
                     <p className="profile-no-comments">
                       No comments yet.
                       Start the conversation.
@@ -976,7 +1414,6 @@ function Profile() {
 
                   {comments.map(
                     (comment) => {
-
                       const commentUser =
                         comment.user ||
                         comment.author;
@@ -985,6 +1422,10 @@ function Profile() {
                         comment.text ||
                         comment.content ||
                         "";
+
+                      const commentUserId =
+                        commentUser?._id ||
+                        commentUser?.id;
 
                       return (
                         <div
@@ -996,19 +1437,25 @@ function Profile() {
 
                           <div className="profile-comment-avatar">
 
-                            {commentUser?.profilePicture ? (
+                            {commentUser
+                              ?.profilePicture ? (
                               <img
                                 src={
-                                  commentUser.profilePicture
+                                  commentUser
+                                    .profilePicture
                                 }
                                 alt={
-                                  commentUser.name ||
+                                  commentUser
+                                    .name ||
                                   "User"
                                 }
                               />
                             ) : (
-                              commentUser?.name
-                                ?.charAt(0)
+                              commentUser
+                                ?.name
+                                ?.charAt(
+                                  0
+                                )
                                 ?.toUpperCase() ||
                               "U"
                             )}
@@ -1019,9 +1466,9 @@ function Profile() {
 
                             <div className="profile-comment-top">
 
-                              {commentUser?._id ? (
+                              {commentUserId ? (
                                 <Link
-                                  to={`/profile/${commentUser._id}`}
+                                  to={`/profile/${commentUserId}`}
                                   className="profile-comment-user"
                                 >
                                   {commentUser.name ||
@@ -1033,9 +1480,9 @@ function Profile() {
                                 </span>
                               )}
 
-                              {commentUser?._id
+                              {commentUserId
                                 ?.toString() ===
-                                currentUser?._id
+                                currentUserId
                                   ?.toString() && (
                                 <button
                                   type="button"
@@ -1122,7 +1569,7 @@ function Profile() {
                         }
                       }}
                       placeholder="Write a comment..."
-                      maxLength="1000"
+                      maxLength="500"
                     />
 
                     <button
@@ -1216,6 +1663,78 @@ function Profile() {
               }
             >
 
+              {/* ==============================
+                  PROFILE PHOTO
+              ============================== */}
+
+              <div className="edit-profile-photo-section">
+
+                <div className="edit-profile-photo-preview">
+
+                  {profilePhotoPreview ? (
+                    <img
+                      src={
+                        profilePhotoPreview
+                      }
+                      alt="Profile preview"
+                    />
+                  ) : (
+                    profileUser.name
+                      ?.charAt(0)
+                      ?.toUpperCase() ||
+                    "U"
+                  )}
+
+                </div>
+
+                <div className="edit-profile-photo-controls">
+
+                  <strong>
+                    Profile photo
+                  </strong>
+
+                  <p>
+                    JPG, PNG or WEBP.
+                    Maximum 10 MB.
+                  </p>
+
+                  <button
+                    type="button"
+                    className="edit-profile-photo-button"
+                    onClick={() =>
+                      profilePhotoInputRef
+                        .current
+                        ?.click()
+                    }
+                    disabled={
+                      savingProfile
+                    }
+                  >
+                    {profilePhoto
+                      ? "Choose another photo"
+                      : profileUser.profilePicture
+                      ? "Change photo"
+                      : "Upload photo"}
+                  </button>
+
+                  <input
+                    ref={
+                      profilePhotoInputRef
+                    }
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={
+                      handleProfilePhotoChange
+                    }
+                    className="edit-profile-photo-input"
+                  />
+
+                </div>
+
+              </div>
+
+              {/* NAME */}
+
               <div className="edit-profile-field">
 
                 <label htmlFor="profile-name">
@@ -1238,6 +1757,8 @@ function Profile() {
 
               </div>
 
+              {/* BIO */}
+
               <div className="edit-profile-field">
 
                 <label htmlFor="profile-bio">
@@ -1254,37 +1775,17 @@ function Profile() {
                     handleEditChange
                   }
                   rows="4"
-                  maxLength="300"
+                  maxLength="160"
                 />
 
                 <small>
-                  {
-                    editForm.bio.length
-                  }
-                  /300
+                  {editForm.bio.length}
+                  /160
                 </small>
 
               </div>
 
-              <div className="edit-profile-field">
-
-                <label htmlFor="profile-picture">
-                  Profile picture URL
-                </label>
-
-                <input
-                  id="profile-picture"
-                  type="url"
-                  name="profilePicture"
-                  value={
-                    editForm.profilePicture
-                  }
-                  onChange={
-                    handleEditChange
-                  }
-                />
-
-              </div>
+              {/* ACTIONS */}
 
               <div className="edit-profile-actions">
 
@@ -1310,7 +1811,9 @@ function Profile() {
                   }
                 >
                   {savingProfile
-                    ? "Saving..."
+                    ? profilePhoto
+                      ? "Uploading..."
+                      : "Saving..."
                     : "Save changes"}
                 </button>
 
